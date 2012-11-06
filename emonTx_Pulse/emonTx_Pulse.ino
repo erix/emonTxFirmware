@@ -53,7 +53,7 @@ long pulseCount = 0;                                                    // Numbe
 unsigned long pulseTime,lastTime;                                       // Used to measure power.
 double power, elapsedWh;                                                // power and energy
 int ppwh = 1;                                                           // 1000 pulses/kwh = 1 pulse per wh - Number of pulses per wh - found or set on the meter.
-
+unsigned long treshold = 400000;                                                  // do not register pulses which are faster then threshold
 
 void setup() 
 {
@@ -73,8 +73,10 @@ void setup()
 
 void loop() 
 { 
-  emontx.pulse = pulseCount; pulseCount=0; 
+  emontx.pulse = pulseCount; pulseCount=0;
+  Serial.println(emontx.pulse);
   send_rf_data();                                                       // *SEND RF DATA* - see emontx_lib
+  emontx.power = 0;
   emontx_sleep(10);                                                     // sleep or delay in seconds - see emontx_lib
   digitalWrite(LEDpin, HIGH); delay(2); digitalWrite(LEDpin, LOW);      // flash LED
 }
@@ -83,8 +85,12 @@ void loop()
 // The interrupt routine - runs each time a falling edge of a pulse is detected
 void onPulse()                  
 {
-  lastTime = pulseTime;        //used to measure time between pulses.
+  unsigned long delta;
+  lastTime = pulseTime;                                                //used to measure time between pulses.
   pulseTime = micros();
-  pulseCount++;                                                      //pulseCounter               
-  emontx.power = int((3600000000.0 / (pulseTime - lastTime))/ppwh);  //Calculate power
+  delta = pulseTime - lastTime;
+  if(delta > treshold) {
+    pulseCount++;                                                        //pulseCounter
+    emontx.power = int((3600000000.0 / (pulseTime - lastTime))/ppwh);  //Calculate power
+  }
 }
